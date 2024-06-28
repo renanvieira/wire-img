@@ -1,6 +1,6 @@
 use std::{
     fs,
-    io::{BufWriter, Result, Write},
+    io::{self, BufWriter, Result, Write},
     path::{Path, PathBuf},
 };
 
@@ -22,7 +22,7 @@ impl<'a> DiskStorage<'a> {
         Ok(Self { base_path: path })
     }
 
-    pub fn add_new_file(&self, file: File, data: &[u8]) -> std::io::Result<PathBuf> {
+    pub fn add_new_file(&self, file: &File, data: &[u8]) -> std::io::Result<PathBuf> {
         let file_path = self.base_path.join(file.file_name());
 
         let file_handler = fs::File::create(file_path.clone())?;
@@ -32,6 +32,12 @@ impl<'a> DiskStorage<'a> {
         tracing::debug!("created new file at {:?}", file_path.to_str());
 
         Ok(file_path.to_path_buf())
+    }
+
+    pub fn delete_file(&self, file: File) -> std::io::Result<()> {
+        let file_path = self.base_path.join(file.file_name());
+
+        fs::remove_file(file_path)
     }
 }
 
@@ -110,7 +116,7 @@ mod tests {
         let mut data = [0u8; 8];
         rand::thread_rng().fill_bytes(&mut data);
 
-        let path = storage.add_new_file(file, &data)?;
+        let path = storage.add_new_file(&file, &data)?;
 
         assert_eq!(
             format!("{}/{}", folder, filename),
@@ -118,6 +124,28 @@ mod tests {
         );
 
         fs::remove_file(path)?;
+        fs::remove_dir(folder)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_delete_file() -> io::Result<()> {
+        let folder = create_random_folder();
+
+        let storage = DiskStorage::new(&folder)?;
+
+        let file = super::File("empty", "jpg");
+
+        let mut data = [0u8; 8];
+        rand::thread_rng().fill_bytes(&mut data);
+
+        let path = storage.add_new_file(&file, &data)?;
+
+        let _ = storage.delete_file(file)?;
+
+        assert!(path.exists() == false);
+
         fs::remove_dir(folder)?;
 
         Ok(())
