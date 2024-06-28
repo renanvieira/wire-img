@@ -1,6 +1,6 @@
 use std::{
     fs,
-    io::{self, BufWriter, Result, Write},
+    io::{BufWriter, Result, Write},
     path::{Path, PathBuf},
 };
 
@@ -14,9 +14,9 @@ impl<'a> DiskStorage<'a> {
         let path = Path::new(path_str);
         tracing::info!("Initializing disk storage at: {:?}", path.to_str());
 
-        if path.exists() == false {
+        if !path.exists() {
             tracing::info!("Path '{}' not found. Creating entire path.", path_str);
-            fs::create_dir_all(&path)?
+            fs::create_dir_all(path)?
         }
 
         Ok(Self { base_path: path })
@@ -67,14 +67,10 @@ mod tests {
 
     use super::DiskStorage;
 
-    const BASE_TMP_FOLDER: &'static str = "/tmp/pixel_tester";
+    const BASE_TMP_FOLDER: &str = "/tmp/pixel_tester";
 
     fn create_random_folder() -> String {
-        format!(
-            "{}_{}",
-            BASE_TMP_FOLDER,
-            Uuid::now_v7().as_simple().to_string()
-        )
+        format!("{}_{}", BASE_TMP_FOLDER, Uuid::now_v7().as_simple())
     }
 
     #[test]
@@ -85,7 +81,7 @@ mod tests {
 
         assert!(Path::new(&folder).exists());
 
-        let _ = fs::remove_dir(folder)?;
+        fs::remove_dir(folder)?;
 
         Ok(())
     }
@@ -93,7 +89,7 @@ mod tests {
     #[test]
     fn test_storage_new_folder_exists() -> io::Result<()> {
         let folder = create_random_folder();
-        let _ = fs::create_dir_all(&folder)?;
+        fs::create_dir_all(&folder)?;
 
         let _ = DiskStorage::new(&folder)?;
 
@@ -142,9 +138,9 @@ mod tests {
 
         let path = storage.add_new_file(&file, &data)?;
 
-        let _ = storage.delete_file(file)?;
+        storage.delete_file(file)?;
 
-        assert!(path.exists() == false);
+        assert!(!path.exists());
 
         fs::remove_dir(folder)?;
 
