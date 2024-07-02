@@ -1,3 +1,6 @@
 [workspace]
 resolver = "2"
 members = ["api", "image", "storage", "tests"]
+
+[workspace.dependencies]
+anyhow = "1.0.86"
