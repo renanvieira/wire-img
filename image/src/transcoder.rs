@@ -96,7 +96,9 @@ impl Encoder for Transcoder {
                             image::imageops::FilterType::CatmullRom,
                         );
                     }
-                    Operations::Crop(_p, _s) => unimplemented!("crop not implemented yet"),
+                    Operations::Crop(p, s) => {
+                        image = image.crop_imm(*p.x(), *p.y(), *s.width(), *s.height());
+                    }
                 }
             }
         }
