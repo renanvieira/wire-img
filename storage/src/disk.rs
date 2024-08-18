@@ -22,7 +22,7 @@ impl<'a> DiskStorage<'a> {
         Ok(Self { base_path: path })
     }
 
-    pub fn add_new_file(&self, file: &File, data: &[u8]) -> std::io::Result<PathBuf> {
+    pub fn add_new_file(&self, file: File, data: &[u8]) -> std::io::Result<PathBuf> {
         let file_path = self.base_path.join(file.file_name());
 
         let file_handler = fs::File::create(file_path.clone())?;
@@ -45,6 +45,10 @@ impl<'a> DiskStorage<'a> {
 pub struct File<'a>(&'a str, &'a str);
 
 impl<'a> File<'a> {
+    pub fn new(name: &'a str, extenstion: &'a str) -> Self {
+        Self(name, extenstion)
+    }
+
     pub fn name(&self) -> &str {
         self.0
     }
