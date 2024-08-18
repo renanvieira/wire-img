@@ -60,10 +60,11 @@ pub trait Encoder {
     ) -> anyhow::Result<Vec<u8>>;
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Transcoder;
 
 impl Encoder for Transcoder {
+    #[tracing::instrument(skip(image))]
     fn transcode(
         &self,
         image: &[u8],
