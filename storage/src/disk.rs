@@ -10,6 +10,7 @@ pub struct DiskStorage<'a> {
 }
 
 impl<'a> DiskStorage<'a> {
+    #[tracing::instrument]
     pub fn new(path_str: &'a str) -> Result<Self> {
         let path = Path::new(path_str);
         tracing::info!("Initializing disk storage at: {:?}", path.to_str());
@@ -22,6 +23,7 @@ impl<'a> DiskStorage<'a> {
         Ok(Self { base_path: path })
     }
 
+    #[tracing::instrument(skip(data))]
     pub fn add_new_file(&self, file: File, data: &[u8]) -> std::io::Result<PathBuf> {
         let file_path = self.base_path.join(file.file_name());
 
@@ -34,6 +36,7 @@ impl<'a> DiskStorage<'a> {
         Ok(file_path.to_path_buf())
     }
 
+    #[tracing::instrument]
     pub fn delete_file(&self, file: File) -> std::io::Result<()> {
         let file_path = self.base_path.join(file.file_name());
 
