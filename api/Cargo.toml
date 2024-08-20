@@ -19,3 +19,4 @@ tokio = { version = "1.38.0", features = ["full", "mio"] }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+dotenv = "0.15.0"
