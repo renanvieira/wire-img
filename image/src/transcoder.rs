@@ -2,6 +2,7 @@ use std::io::Cursor;
 
 use anyhow::anyhow;
 use image::{guess_format, ImageFormat};
+use tracing::error;
 
 #[derive(Debug)]
 pub enum ImageEncoding {
@@ -55,6 +56,7 @@ pub trait Encoder {
     fn transcode(
         &self,
         image: &[u8],
+        extension: String,
         target: ImageFormat,
         ops: Option<Vec<Operations>>,
     ) -> anyhow::Result<Vec<u8>>;
@@ -68,24 +70,31 @@ impl Encoder for Transcoder {
     fn transcode(
         &self,
         image: &[u8],
+        extension: String,
         target: ImageFormat,
         ops: Option<Vec<Operations>>,
     ) -> anyhow::Result<Vec<u8>> {
         let format_result = guess_format(image);
 
-        match format_result {
+        let format = match format_result {
             Ok(format) => format,
             Err(err) => {
-                return Err(anyhow!(
-                    "error while trying to validate image format: {:?}",
-                    err
-                ))
+                error!("error while trying to validate image format: {:?}", err);
+
+                match extension.as_str(){
+                    "png"=> ImageFormat::Png,
+                    "jpg"|"jpeg"=>ImageFormat::Jpeg,
+                    "avif" => ImageFormat::Avif,
+                    _=> return Err(anyhow!("error while trying to validate image format by  unsupported extension: {:?}", extension))
+                }
             }
         };
 
         let bytes: Vec<u8> = Vec::new();
         let mut cursor = Cursor::new(bytes);
-        let mut image = image::load_from_memory(image)?;
+        let is_jpg = target == ImageFormat::Jpeg;
+
+        let mut image = image::load_from_memory_with_format(image, format)?;
 
         if let Some(operations) = ops {
             for op in operations {
@@ -104,7 +113,13 @@ impl Encoder for Transcoder {
             }
         }
 
-        image.write_to(&mut cursor, target)?;
+        if is_jpg {
+            let rgb8 = image.to_rgb8();
+            rgb8.write_to(&mut cursor, target)?;
+        } else {
+            image.write_to(&mut cursor, target)?;
+        }
+
         Ok(cursor.get_ref().to_vec())
     }
 }
@@ -144,7 +159,7 @@ mod tests {
         ops: Option<Vec<Operations>>,
     ) -> anyhow::Result<DynamicImage> {
         let t = Transcoder::default();
-        let output_img = t.transcode(&img, output_format, ops)?;
+        let output_img = t.transcode(&img, "avif".to_owned(), output_format, ops)?;
 
         assert!(output_img.len() > 0);
 

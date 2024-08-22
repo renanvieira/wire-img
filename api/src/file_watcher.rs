@@ -83,14 +83,24 @@ pub fn load_file(path: PathBuf) -> anyhow::Result<()> {
                 .to_str()
                 .expect("filename is not valid UTF8");
 
+            let extension = path
+                .extension()
+                .expect("file has no stem (filename)")
+                .to_str()
+                .expect("filename is not valid UTF8");
+
             let mut buf: Vec<u8> = Vec::new();
 
             while buf.is_empty() {
                 f.read_to_end(&mut buf)?;
             }
 
-            let _new_format =
-                Transcoder.transcode(&buf, image_processing::ImageFormat::Avif, None)?;
+            let _new_format = Transcoder.transcode(
+                &buf,
+                extension.to_owned(),
+                image_processing::ImageFormat::Avif,
+                None,
+            )?;
 
             let storage = DiskStorage::new("/tmp/watch-out")?;
             let new_path = storage.add_new_file(File::new(filename, "avif"), &_new_format);
