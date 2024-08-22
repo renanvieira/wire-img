@@ -11,8 +11,9 @@ use axum::{
 };
 use dotenv::dotenv;
 use file_watcher::load_images;
+use image_processing::transcoder::{Encoder, ImageEncoding, Transcoder};
 use tokio::{io::AsyncReadExt, net::TcpListener};
-use tracing::{info, Level};
+use tracing::{error, info, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
 
 #[tokio::main]
@@ -32,7 +33,8 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", get(|| async { "home" }))
-        .route("/:image", get(serve_image));
+        .route("/:image", get(default_serve_image))
+        .route("/:image/:extension", get(serve_image));
 
     let listener = TcpListener::bind("0.0.0.0:5000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
@@ -41,10 +43,26 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn serve_image(Path(image): Path<String>) -> axum::response::Result<impl IntoResponse> {
+pub async fn default_serve_image(
+    Path(image): Path<String>,
+) -> axum::response::Result<impl IntoResponse> {
+    // TODO: Choose default based on Accept header. Order: avif, jpg, png
+    serve_image(Path((image, "avif".to_string()))).await
+}
+
+pub async fn serve_image(
+    Path((image, ext)): Path<(String, String)>,
+) -> axum::response::Result<impl IntoResponse> {
     let mut full_path = PathBuf::from_str("/tmp/watch-out")?;
     full_path.push(image);
     full_path.set_extension("avif");
+
+    let extension = match ext.as_str() {
+        "png" => ImageEncoding::PNG,
+        "jpg" | "jpeg" => ImageEncoding::JPEG,
+        "avif" => ImageEncoding::AVIF,
+        _ => return Err(StatusCode::BAD_REQUEST.into()),
+    };
 
     let handle = tokio::fs::OpenOptions::new()
         .read(true)
@@ -54,19 +72,43 @@ pub async fn serve_image(Path(image): Path<String>) -> axum::response::Result<im
     match handle {
         Ok(mut f) => {
             let mut headers = HeaderMap::new();
-            headers.insert(CONTENT_TYPE, "image/avif".parse().unwrap());
             let mut bytes: Vec<u8> = Vec::new();
 
             let read_result = f.read_to_end(&mut bytes).await;
             match read_result {
-                Ok(s) => info!("Read {} bytes for {:?}", s, &full_path),
+                Ok(s) => {
+                    info!("Read {} bytes for {:?}", s, &full_path);
+
+                    headers.insert(CONTENT_TYPE, extension.content_type().parse().unwrap());
+                    let encoded_image_bytes = match extension {
+                        ImageEncoding::AVIF => Ok(bytes),
+                        ImageEncoding::JPEG => Transcoder.transcode(
+                            &bytes,
+                            "avif".to_owned(),
+                            image_processing::ImageFormat::Jpeg,
+                            None,
+                        ),
+                        ImageEncoding::PNG => Transcoder.transcode(
+                            &bytes,
+                            "avif".to_owned(),
+                            image_processing::ImageFormat::Png,
+                            None,
+                        ),
+                    };
+
+                    match encoded_image_bytes {
+                        Ok(b) => Ok((headers, b).into_response()),
+                        Err(e) => {
+                            error!("Failed to encode image to {:?}: {}", ext, e);
+                            Err(StatusCode::INTERNAL_SERVER_ERROR.into())
+                        }
+                    }
+                }
                 Err(e) => {
                     tracing::error!("Failed reading Image file: {:?} : {}", &full_path, e);
-                    return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
+                    Err(StatusCode::INTERNAL_SERVER_ERROR.into())
                 }
             }
-
-            Ok((headers, bytes).into_response())
         }
         Err(e) if e.kind() == ErrorKind::NotFound => Ok(StatusCode::NOT_FOUND.into_response()),
         Err(e) => {
