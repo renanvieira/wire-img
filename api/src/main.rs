@@ -1,7 +1,5 @@
 mod file_watcher;
 
-use std::{env, io::ErrorKind, path::PathBuf, str::FromStr};
-
 use axum::{
     extract::Path,
     http::{header::CONTENT_TYPE, HeaderMap, StatusCode},
@@ -12,6 +10,7 @@ use axum::{
 use dotenv::dotenv;
 use file_watcher::load_images;
 use image_processing::transcoder::{Encoder, ImageEncoding, Transcoder};
+use std::{env, io::ErrorKind, path::PathBuf, str::FromStr};
 use tokio::{io::AsyncReadExt, net::TcpListener};
 use tracing::{error, info, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
