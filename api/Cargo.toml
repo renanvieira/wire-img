@@ -22,4 +22,3 @@ tracing-subscriber = { workspace = true }
 dotenv = "0.15.0"
 toml = "0.8.19"
 serde = { version = "1.0.209", features = ["derive"] }
-serde-aux = "4.5.0"
