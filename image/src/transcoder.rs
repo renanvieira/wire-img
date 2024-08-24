@@ -1,8 +1,8 @@
 use std::io::Cursor;
+use tracing::warn;
 
 use anyhow::anyhow;
 use image::{guess_format, ImageFormat};
-use tracing::error;
 
 #[derive(Debug)]
 pub enum ImageEncoding {
@@ -28,6 +28,9 @@ impl Position {
 pub struct PixelSize(u32, u32);
 
 impl PixelSize {
+    pub fn new(w: u32, h: u32) -> Self {
+        PixelSize(w, h)
+    }
     pub fn width(&self) -> &u32 {
         &self.0
     }
@@ -79,7 +82,7 @@ impl Encoder for Transcoder {
         let format = match format_result {
             Ok(format) => format,
             Err(err) => {
-                error!("error while trying to validate image format: {:?}", err);
+                warn!("error while trying to validate image format: {:?}", err);
 
                 match extension.as_str(){
                     "png"=> ImageFormat::Png,
@@ -100,7 +103,7 @@ impl Encoder for Transcoder {
             for op in operations {
                 match op {
                     Operations::Resize(s) => {
-                        image = image.resize(
+                        image = image.resize_exact(
                             *s.width(),
                             *s.height(),
                             image::imageops::FilterType::CatmullRom,
