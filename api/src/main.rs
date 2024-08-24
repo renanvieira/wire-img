@@ -1,3 +1,4 @@
+mod config;
 mod file_watcher;
 
 use anyhow::anyhow;

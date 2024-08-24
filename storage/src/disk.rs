@@ -119,7 +119,7 @@ mod tests {
         let mut data = [0u8; 8];
         rand::thread_rng().fill_bytes(&mut data);
 
-        let path = storage.add_new_file(&file, &data)?;
+        let path = storage.add_new_file(file, &data)?;
 
         assert_eq!(
             format!("{}/{}", folder, filename),
@@ -143,8 +143,9 @@ mod tests {
         let mut data = [0u8; 8];
         rand::thread_rng().fill_bytes(&mut data);
 
-        let path = storage.add_new_file(&file, &data)?;
+        let path = storage.add_new_file(file, &data)?;
 
+        let file = super::File("empty", "jpg");
         storage.delete_file(file)?;
 
         assert!(!path.exists());

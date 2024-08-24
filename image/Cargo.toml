@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 anyhow = {workspace=true}
 image = { version = "0.25.1", features = ["avif-native"] }
+serde = { version = "1.0.209", features = ["derive"] }
 tracing.workspace = true

@@ -3,11 +3,16 @@ use tracing::warn;
 
 use anyhow::anyhow;
 use image::{guess_format, ImageFormat};
+use serde::{Deserialize, Serialize};
+use tracing::error;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ImageEncoding {
+    #[serde(alias = "avif")]
     AVIF,
+    #[serde(alias = "jpg", alias = "JPG", alias = "jpeg")]
     JPEG,
+    #[serde(alias = "png")]
     PNG,
 }
 
