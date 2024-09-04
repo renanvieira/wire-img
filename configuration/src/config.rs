@@ -2,26 +2,36 @@
 
 use std::net::Ipv4Addr;
 
-use image_processing::transcoder::ImageEncoding;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+use crate::ImageEncoding;
+
+#[derive(Debug, Deserialize, Default)]
 pub struct Settings {
-    server: ServerSettings,
-    image: ImageSettings,
+    pub server: ServerSettings,
+    pub image: ImageSettings,
     templates: Vec<TemplateSettings>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ServerSettings {
-    port: u16,
-    host: Ipv4Addr,
+    pub port: u16,
+    pub host: Ipv4Addr,
 }
 
-#[derive(Debug, Deserialize)]
+impl Default for ServerSettings {
+    fn default() -> Self {
+        Self {
+            port: 3000,
+            host: Ipv4Addr::LOCALHOST,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Default)]
 pub struct ImageSettings {
-    formats: Vec<ImageEncoding>,
-    storage_format: ImageEncoding,
+    pub formats: Vec<ImageEncoding>,
+    pub storage_format: ImageEncoding,
 }
 
 #[derive(Debug, Deserialize)]
@@ -44,24 +54,22 @@ pub enum TemplateType {
 mod tests {
     use std::net::Ipv4Addr;
 
-    use image_processing::transcoder::ImageEncoding;
-
-    use crate::config::{Settings, TemplateType};
+    use crate::{
+        config::{Settings, TemplateType},
+        ImageEncoding,
+    };
 
     #[test]
     fn test_valid_toml() -> anyhow::Result<()> {
         let valid_toml: &str = r#"
-            # Settings for the server
             [server]
             port = 8080
             host = "192.168.1.1"
 
-            # Settings for images
             [image]
             formats = ["PNG", "JPEG"]
             storage_format = "PNG"
 
-            # Settings for templates
             [[templates]]
             location = "Prefix"
             name = "large"
@@ -112,17 +120,14 @@ mod tests {
     #[test]
     fn test_valid_toml_lowercase_enum_values() -> anyhow::Result<()> {
         let valid_toml: &str = r#"
-            # Settings for the server
             [server]
             port = 8080
             host = "192.168.1.1"
 
-            # Settings for images
             [image]
             formats = ["png", "jpeg"]
             storage_format = "png"
 
-            # Settings for templates
             [[templates]]
             location = "prefix"
             name = "large"

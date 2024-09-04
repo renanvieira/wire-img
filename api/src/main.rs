@@ -1,25 +1,80 @@
-mod config;
 mod file_watcher;
 
 use anyhow::anyhow;
 use axum::{
-    extract::Path,
+    extract::{Path, State},
     http::{header::CONTENT_TYPE, HeaderMap, StatusCode},
     response::IntoResponse,
     routing::get,
     Router,
 };
+use configuration::{config::Settings, ImageEncoding};
+use core::panic;
 use dotenv::dotenv;
-use file_watcher::load_images;
-use image_processing::transcoder::{Encoder, ImageEncoding, Operations, PixelSize, Transcoder};
-use std::{env, io::ErrorKind, path::PathBuf, str::FromStr};
+use file_watcher::ImageWatcher;
+use image_processing::transcoder::Transcoder;
+use image_processing::transcoder::{Encoder, Operations, PixelSize};
+use std::{
+    env,
+    fs::OpenOptions,
+    io::{ErrorKind, Read},
+    path::PathBuf,
+    str::FromStr,
+    sync::{Arc, LazyLock},
+};
 use tokio::{io::AsyncReadExt, net::TcpListener};
-use tracing::{error, info, Level};
+use tracing::{error, info, warn, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
+
+static CONFIGURATION: LazyLock<Settings> = LazyLock::new(|| {
+    // TODO: use a env var to find configuration file
+    let config_file = OpenOptions::new().read(true).open("settings.toml");
+
+    match config_file {
+        Ok(mut f) => {
+            let mut toml_str = String::new();
+            let read_result = f.read_to_string(&mut toml_str);
+
+            match read_result {
+                Ok(_) => toml::from_str(&toml_str).unwrap(),
+                Err(e) => {
+                    panic!("Failed to read the file: {}", e)
+                }
+            }
+        }
+        Err(e) => {
+            error!("Error while opening the configuration file: {}", e);
+            warn!("Configuration file not found. Loading defaults...");
+            // TODO: load default configuration
+            Settings::default()
+        }
+    }
+});
+
+#[derive(Debug)]
+pub struct APIState<'a> {
+    configuration: &'a Settings,
+    transcoder: Transcoder,
+}
+
+impl<'a> APIState<'a> {
+    pub fn new(configuration: &'a Settings, transcoder: Transcoder) -> Self {
+        Self {
+            configuration,
+            transcoder,
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
+
+    let config = &*CONFIGURATION;
+    let transcoder = Transcoder;
+
+    let state = APIState::new(config, transcoder);
+    let state_arc = Arc::new(state);
 
     tracing_subscriber::fmt()
         .with_span_events(FmtSpan::FULL)
@@ -30,15 +85,19 @@ async fn main() -> anyhow::Result<()> {
     let input_path = env::var("INPUT_PATH")?;
     let path = PathBuf::from_str(&input_path)?;
 
-    tokio::spawn(load_images(path));
+    let watcher = ImageWatcher::new(path, Arc::clone(&state_arc))?;
+    tokio::spawn(watcher.watch());
 
     let app = Router::new()
         .route("/", get(|| async { "home" }))
         .route("/:image", get(default_serve_image))
         .route("/:image/:extension", get(serve_image))
-        .route("/:width/:height/:image/:extension", get(serve_resized));
+        .route("/:width/:height/:image/:extension", get(serve_resized))
+        .with_state(Arc::clone(&state_arc));
 
-    let listener = TcpListener::bind("0.0.0.0:5000").await.unwrap();
+    let address = format!("{}:{}", config.server.host, config.server.port);
+
+    let listener = TcpListener::bind(address).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
     info!("Exiting...");
@@ -70,15 +129,19 @@ pub async fn serve_resized(
         }
     }
 }
+#[tracing::instrument]
 pub async fn default_serve_image(
     Path(image): Path<String>,
+    state: State<Arc<APIState<'_>>>,
 ) -> axum::response::Result<impl IntoResponse> {
     // TODO: Choose default based on Accept header. Order: avif, jpg, png
-    serve_image(Path((image, "avif".to_string()))).await
+    serve_image(Path((image, "avif".to_string())), state).await
 }
 
+#[tracing::instrument]
 pub async fn serve_image(
     Path((image, ext)): Path<(String, String)>,
+    State(state): State<Arc<APIState<'_>>>,
 ) -> axum::response::Result<impl IntoResponse> {
     let extension = match ext.as_str() {
         "png" => ImageEncoding::PNG,
@@ -86,6 +149,13 @@ pub async fn serve_image(
         "avif" => ImageEncoding::AVIF,
         _ => return Err(StatusCode::BAD_REQUEST.into()),
     };
+
+    let allowed_formats = &state.configuration.image.formats;
+
+    if !allowed_formats.contains(&extension) {
+        // TODO: serve an image with written error
+        return Err(StatusCode::BAD_REQUEST.into());
+    }
 
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, extension.content_type().parse().unwrap());
