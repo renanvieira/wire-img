@@ -13,11 +13,11 @@ use configuration::{
     ImageEncoding,
 };
 use core::panic;
-use dotenv::dotenv;
 use file_watcher::ImageWatcher;
 use image_processing::transcoder::{Encoder, Operations, PixelSize};
 use image_processing::{transcoder::Transcoder, ImageFormat};
 use std::{
+    env,
     fs::OpenOptions,
     io::{ErrorKind, Read},
     path::PathBuf,
@@ -29,8 +29,26 @@ use tracing::{error, info, warn, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
 
 static CONFIGURATION: LazyLock<Settings> = LazyLock::new(|| {
-    // TODO: use a env var to find configuration file
-    let config_file = OpenOptions::new().read(true).open("settings.toml");
+    let env_config_path_result = env::var("SETTINGS_PATH");
+
+    let config_path = match env_config_path_result {
+        Ok(path_string) => {
+            let path = PathBuf::from(path_string);
+
+            if !path.is_dir() || !path.exists() {
+                panic!(
+                    "Invalid settings file path: {}",
+                    path.into_os_string().to_string_lossy()
+                );
+            }
+
+            format!("{:?}/settings.toml", path.into_os_string())
+        }
+        Err(_) => "settings.toml".to_string(),
+    };
+
+    info!("Loading settings file from: {}", config_path);
+    let config_file = OpenOptions::new().read(true).open(config_path);
 
     match config_file {
         Ok(mut f) => {
@@ -47,7 +65,6 @@ static CONFIGURATION: LazyLock<Settings> = LazyLock::new(|| {
         Err(e) => {
             error!("Error while opening the configuration file: {}", e);
             warn!("Configuration file not found. Loading defaults...");
-            // TODO: load default configuration
             Settings::default()
         }
     }
@@ -70,19 +87,17 @@ impl<'a> APIState<'a> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenv().ok();
+    tracing_subscriber::fmt()
+        .with_span_events(FmtSpan::FULL)
+        .with_max_level(Level::DEBUG)
+        .pretty()
+        .init();
 
     let config = &*CONFIGURATION;
     let transcoder = Transcoder;
 
     let state = APIState::new(config, transcoder);
     let state_arc = Arc::new(state);
-
-    tracing_subscriber::fmt()
-        .with_span_events(FmtSpan::FULL)
-        .with_max_level(Level::DEBUG)
-        .pretty()
-        .init();
 
     info!("Watching new images at {:?}", &config.image.input_path);
     info!("Storing encoded images at {:?}", &config.image.output_path);

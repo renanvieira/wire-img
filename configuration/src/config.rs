@@ -28,12 +28,23 @@ impl Default for ServerSettings {
     }
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
 pub struct ImageSettings {
     pub formats: Vec<ImageEncoding>,
     pub storage_format: ImageEncoding,
     pub input_path: PathBuf,
     pub output_path: PathBuf,
+}
+
+impl Default for ImageSettings {
+    fn default() -> Self {
+        Self {
+            formats: vec![ImageEncoding::AVIF, ImageEncoding::JPEG, ImageEncoding::PNG],
+            storage_format: ImageEncoding::AVIF,
+            input_path: "/var/lib/wire-img/in".into(),
+            output_path: "/var/lib/wire-img/out".into(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
