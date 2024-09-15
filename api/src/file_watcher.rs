@@ -40,8 +40,6 @@ impl<'a> ImageWatcher<'a> {
     }
 
     pub async fn watch(mut self) -> anyhow::Result<()> {
-        // let (_, rx) = tokio::sync::oneshot::channel::<()>();
-
         self.watcher
             .watch(&self.path, notify::RecursiveMode::NonRecursive)?;
 
@@ -120,7 +118,9 @@ impl<'a> ImageWatcher<'a> {
                     None,
                 )?;
 
-                let storage = DiskStorage::new("/tmp/watch-out")?;
+                let output_path = &self.state.configuration.image.output_path;
+
+                let storage = DiskStorage::from_path(output_path)?;
                 let new_path = storage.add_new_file(File::new(filename, "avif"), &_new_format);
 
                 // TODO: make a global settings struct for env vars

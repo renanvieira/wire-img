@@ -23,6 +23,18 @@ impl<'a> DiskStorage<'a> {
         Ok(Self { base_path: path })
     }
 
+    #[tracing::instrument]
+    pub fn from_path(path: &'a Path) -> Result<Self> {
+        tracing::info!("Initializing disk storage at: {:?}", path.to_str());
+
+        if !path.exists() {
+            tracing::info!("Path '{:?}' not found. Creating entire path.", path);
+            fs::create_dir_all(path)?
+        }
+
+        Ok(Self { base_path: path })
+    }
+
     #[tracing::instrument(skip(data))]
     pub fn add_new_file(&self, file: File, data: &[u8]) -> std::io::Result<PathBuf> {
         let file_path = self.base_path.join(file.file_name());

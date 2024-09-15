@@ -21,4 +21,11 @@ impl ImageEncoding {
             ImageEncoding::PNG => "image/png",
         }
     }
+    pub fn extension(&self) -> &str {
+        match self {
+            ImageEncoding::AVIF => ".avif",
+            ImageEncoding::JPEG => ".jpg",
+            ImageEncoding::PNG => ".png",
+        }
+    }
 }

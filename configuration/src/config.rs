@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::net::Ipv4Addr;
+use std::{net::Ipv4Addr, path::PathBuf};
 
 use serde::Deserialize;
 
@@ -10,7 +10,7 @@ use crate::ImageEncoding;
 pub struct Settings {
     pub server: ServerSettings,
     pub image: ImageSettings,
-    templates: Vec<TemplateSettings>,
+    pub templates: Vec<TemplateSettings>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -32,14 +32,16 @@ impl Default for ServerSettings {
 pub struct ImageSettings {
     pub formats: Vec<ImageEncoding>,
     pub storage_format: ImageEncoding,
+    pub input_path: PathBuf,
+    pub output_path: PathBuf,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct TemplateSettings {
-    location: TemplateType,
-    name: String,
-    size: [u16; 2],
-    format: ImageEncoding,
+    pub location: TemplateType,
+    pub name: String,
+    pub size: [u32; 2],
+    pub format: ImageEncoding,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -52,7 +54,7 @@ pub enum TemplateType {
 
 #[cfg(test)]
 mod tests {
-    use std::net::Ipv4Addr;
+    use std::{net::Ipv4Addr, path::PathBuf, str::FromStr};
 
     use crate::{
         config::{Settings, TemplateType},
@@ -69,6 +71,8 @@ mod tests {
             [image]
             formats = ["PNG", "JPEG"]
             storage_format = "PNG"
+            input_path = "/tmp/watch-in"
+            output_path = "/tmp/watch-out"
 
             [[templates]]
             location = "Prefix"
@@ -96,6 +100,14 @@ mod tests {
             vec![ImageEncoding::PNG, ImageEncoding::JPEG]
         );
         assert_eq!(image_settings.storage_format, ImageEncoding::PNG);
+        assert_eq!(
+            image_settings.input_path,
+            PathBuf::from_str("/tmp/watch-in")?
+        );
+        assert_eq!(
+            image_settings.output_path,
+            PathBuf::from_str("/tmp/watch-out")?
+        );
 
         // templates settings
 
@@ -127,6 +139,8 @@ mod tests {
             [image]
             formats = ["png", "jpeg"]
             storage_format = "png"
+            input_path = "/tmp/watch-in"
+            output_path = "/tmp/watch-out"
 
             [[templates]]
             location = "prefix"
@@ -154,6 +168,14 @@ mod tests {
             vec![ImageEncoding::PNG, ImageEncoding::JPEG]
         );
         assert_eq!(image_settings.storage_format, ImageEncoding::PNG);
+        assert_eq!(
+            image_settings.input_path,
+            PathBuf::from_str("/tmp/watch-in")?
+        );
+        assert_eq!(
+            image_settings.output_path,
+            PathBuf::from_str("/tmp/watch-out")?
+        );
 
         // templates settings
 

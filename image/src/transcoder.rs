@@ -22,9 +22,10 @@ impl Position {
 pub struct PixelSize(u32, u32);
 
 impl PixelSize {
-    pub fn new(w: u32, h: u32) -> Self {
-        PixelSize(w, h)
+    pub fn new(width: u32, height: u32) -> Self {
+        PixelSize(width, height)
     }
+
     pub fn width(&self) -> &u32 {
         &self.0
     }
