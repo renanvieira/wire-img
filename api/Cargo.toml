@@ -13,10 +13,12 @@ axum = { version = "0.7.5", features = [
     "macros",
 ] }
 image_processing = { path="../image/"}
+configuration = { path="../configuration/"}
 storage = {path="../storage/"}
 notify = { version = "6.1.1", default-features = false, features = ["macos_kqueue"] }
-tokio = { version = "1.38.0", features = ["full", "mio"] }
+tokio = { version = "1.38.0", features = ["full", "mio", "rt"] }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-dotenv = "0.15.0"
+toml = "0.8.19"
+serde = { version = "1.0.209", features = ["derive"] }

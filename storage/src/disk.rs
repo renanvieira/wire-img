@@ -23,6 +23,18 @@ impl<'a> DiskStorage<'a> {
         Ok(Self { base_path: path })
     }
 
+    #[tracing::instrument]
+    pub fn from_path(path: &'a Path) -> Result<Self> {
+        tracing::info!("Initializing disk storage at: {:?}", path.to_str());
+
+        if !path.exists() {
+            tracing::info!("Path '{:?}' not found. Creating entire path.", path);
+            fs::create_dir_all(path)?
+        }
+
+        Ok(Self { base_path: path })
+    }
+
     #[tracing::instrument(skip(data))]
     pub fn add_new_file(&self, file: File, data: &[u8]) -> std::io::Result<PathBuf> {
         let file_path = self.base_path.join(file.file_name());
@@ -119,7 +131,7 @@ mod tests {
         let mut data = [0u8; 8];
         rand::thread_rng().fill_bytes(&mut data);
 
-        let path = storage.add_new_file(&file, &data)?;
+        let path = storage.add_new_file(file, &data)?;
 
         assert_eq!(
             format!("{}/{}", folder, filename),
@@ -143,8 +155,9 @@ mod tests {
         let mut data = [0u8; 8];
         rand::thread_rng().fill_bytes(&mut data);
 
-        let path = storage.add_new_file(&file, &data)?;
+        let path = storage.add_new_file(file, &data)?;
 
+        let file = super::File("empty", "jpg");
         storage.delete_file(file)?;
 
         assert!(!path.exists());

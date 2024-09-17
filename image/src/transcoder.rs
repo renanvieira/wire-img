@@ -3,13 +3,7 @@ use tracing::warn;
 
 use anyhow::anyhow;
 use image::{guess_format, ImageFormat};
-
-#[derive(Debug)]
-pub enum ImageEncoding {
-    AVIF,
-    JPEG,
-    PNG,
-}
+use tracing::error;
 
 #[derive(Debug)]
 pub struct Position(u32, u32);
@@ -28,9 +22,10 @@ impl Position {
 pub struct PixelSize(u32, u32);
 
 impl PixelSize {
-    pub fn new(w: u32, h: u32) -> Self {
-        PixelSize(w, h)
+    pub fn new(width: u32, height: u32) -> Self {
+        PixelSize(width, height)
     }
+
     pub fn width(&self) -> &u32 {
         &self.0
     }
@@ -46,15 +41,6 @@ pub enum Operations {
     Crop(Position, PixelSize),
 }
 
-impl ImageEncoding {
-    pub fn content_type(&self) -> &str {
-        match self {
-            ImageEncoding::AVIF => "image/avif",
-            ImageEncoding::JPEG => "image/jpeg",
-            ImageEncoding::PNG => "image/png",
-        }
-    }
-}
 pub trait Encoder {
     fn transcode(
         &self,
@@ -65,7 +51,7 @@ pub trait Encoder {
     ) -> anyhow::Result<Vec<u8>>;
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Transcoder;
 
 impl Encoder for Transcoder {
@@ -161,7 +147,7 @@ mod tests {
         output_format: ImageFormat,
         ops: Option<Vec<Operations>>,
     ) -> anyhow::Result<DynamicImage> {
-        let t = Transcoder::default();
+        let t = Transcoder;
         let output_img = t.transcode(&img, "avif".to_owned(), output_format, ops)?;
 
         assert!(output_img.len() > 0);

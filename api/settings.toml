@@ -1,0 +1,21 @@
+[server]
+port = 8080
+host = "0.0.0.0"
+
+[image]
+formats = ["avif","png", "jpeg"]
+storage_format = "png"
+input_path = "/tmp/wire-img/in"
+output_path = "/tmp/wire-img/out"
+
+[[templates]]
+location = "prefix"
+name = "small"
+size = [480, 640]
+format = "png"
+
+[[templates]]
+location = "suffix"
+name = "full"
+format = "avif"
+size = [1280, 720]
