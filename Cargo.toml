@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = ["api", "configuration", "image", "storage"]
+
+[workspace.dependencies]
+anyhow = "1.0.86"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"

@@ -1,0 +1,24 @@
+[package]
+name = "api"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = { version = "0.7.5", features = [
+    "json",
+    "http2",
+    "multipart",
+    "macros",
+] }
+image_processing = { path="../image/"}
+configuration = { path="../configuration/"}
+storage = {path="../storage/"}
+notify = { version = "6.1.1", default-features = false, features = ["macos_kqueue"] }
+tokio = { version = "1.38.0", features = ["full", "mio", "rt"] }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+toml = "0.8.19"
+serde = { version = "1.0.209", features = ["derive"] }
